@@ -3,7 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Бланк заказа Cargowb</title>
+    <title>Бланк заказа Cargowb (Excel)</title>
+    <!-- Подключаем библиотеку для создания Excel файлов -->
+    <script src="https://jsdelivr.net"></script>
     <style>
         body { font-family: Arial, sans-serif; max-width: 600px; margin: 20px auto; padding: 15px; background: #f5f7fa; color: #333; }
         .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); }
@@ -16,12 +18,13 @@
         .btn { width: 100%; padding: 12px; border: none; border-radius: 8px; font-size: 15px; font-weight: bold; cursor: pointer; margin-top: 10px; transition: background 0.2s; }
         .btn-add { background-color: #34c759; color: white; }
         .btn-add:hover { background-color: #28a745; }
-        .btn-send { background-color: #007aff; color: white; margin-top: 20px; }
-        .btn-send:hover { background-color: #0056b3; }
+        .btn-send { background-color: #ff9500; color: white; margin-top: 20px; }
+        .btn-send:hover { background-color: #e08500; }
         .summary { background: #f1f2f6; padding: 15px; border-radius: 8px; margin-top: 20px; font-size: 16px; }
         .summary div { margin-bottom: 5px; }
         .total-price { font-size: 18px; font-weight: bold; color: #ff3b30; }
         .delete-btn { color: #ff3b30; background: none; border: none; cursor: pointer; float: right; font-size: 13px; }
+        .file-input-wrapper { margin-bottom: 10px; }
     </style>
 </head>
 <body>
@@ -30,7 +33,6 @@
         <h2>Бланк заказа Cargowb</h2>
         
         <form id="orderForm">
-            <!-- Сюда будут добавляться товары -->
             <div id="itemsContainer"></div>
 
             <button type="button" class="btn btn-add" onclick="addItem()">➕ Добавить товар в заказ</button>
@@ -41,17 +43,13 @@
                 <div class="total-price">Итого к оплате: <span id="total">0</span> ¥</div>
             </div>
 
-            <button type="submit" class="btn btn-send">Отправить заказ в Telegram</button>
+            <button type="submit" class="btn btn-send">📥 Скачать Excel таблицу</button>
         </form>
     </div>
 
     <script>
-        // ВНИМАНИЕ: Напишите сюда юзернейм вашего бота БЕЗ @ (например: cargowb_bot)
-        const BOT_USERNAME = 'СЮДА_ВСТАВЬТЕ_ЮЗЕРНЕЙМ_БОТА'; 
-        
         let itemCount = 0;
 
-        // Функция добавления нового товара
         function addItem() {
             itemCount++;
             const container = document.getElementById('itemsContainer');
@@ -85,13 +83,17 @@
                             <input type="number" class="prod-delivery" step="0.01" value="0" placeholder="0.00" oninput="calculateTotal()" required>
                         </div>
                     </div>
+
+                    <div class="file-input-wrapper">
+                        <label>Фото или файл товара:</label>
+                        <input type="file" class="prod-file" accept="image/*,application/pdf">
+                    </div>
                 </div>
             `;
             container.insertAdjacentHTML('beforeend', itemHtml);
             calculateTotal();
         }
 
-        // Удаление товара
         function removeItem(id) {
             const item = document.getElementById(`item_${id}`);
             if (item) {
@@ -100,7 +102,6 @@
             }
         }
 
-        // Пересчет всей суммы с комиссией 7%
         function calculateTotal() {
             let subtotal = 0;
             const rows = document.querySelectorAll('.item-row');
@@ -109,8 +110,6 @@
                 const price = parseFloat(row.querySelector('.prod-price').value) || 0;
                 const qty = parseInt(row.querySelector('.prod-qty').value) || 0;
                 const delivery = parseFloat(row.querySelector('.prod-delivery').value) || 0;
-
-                // Считаем: (Цена * Кол-во) + Доставка по Китаю для этой позиции
                 subtotal += (price * qty) + delivery;
             });
 
@@ -122,7 +121,6 @@
             document.getElementById('total').innerText = total.toFixed(2);
         }
 
-        // Отправка данных при клике на финальную кнопку
         document.getElementById('orderForm').addEventListener('submit', function(e) {
             e.preventDefault();
             
@@ -132,39 +130,69 @@
                 return;
             }
 
-            let text = `📦 **НОВЫЙ ЗАКАЗ CARGOWB**\n\n`;
-            
+            // Массив для хранения строк Excel таблицы
+            const excelData = [];
+
+            // Шапка таблицы Excel
+            excelData.push([
+                "Номер товара", 
+                "Ссылка на товар", 
+                "Характеристики (Цвет/Размер)", 
+                "Цена за шт (¥)", 
+                "Количество (шт)", 
+                "Доставка по КНР (¥)",
+                "Имя прикрепленного файла"
+            ]);
+
             rows.forEach((row, index) => {
                 const link = row.querySelector('.prod-link').value;
-                const price = row.querySelector('.prod-price').value;
-                const qty = row.querySelector('.prod-qty').value;
+                const price = parseFloat(row.querySelector('.prod-price').value) || 0;
+                const qty = parseInt(row.querySelector('.prod-qty').value) || 0;
                 const meta = row.querySelector('.prod-meta').value;
-                const delivery = row.querySelector('.prod-delivery').value;
+                const delivery = parseFloat(row.querySelector('.prod-delivery').value) || 0;
+                
+                // Проверяем, прикрепил ли пользователь файл
+                const fileInput = row.querySelector('.prod-file');
+                let fileName = "Файл не выбран";
+                if (fileInput.files.length > 0) {
+                    fileName = fileInput.files[0].name; // Берем имя файла
+                }
 
-                text += `🔹 **Товар №${index + 1}**\n`;
-                text += `🔗 Ссылка: ${link}\n`;
-                text += `🎨 Характеристики: ${meta}\n`;
-                text += `💰 Цена: ${price} ¥ | 🔢 Кол-во: ${qty} шт\n`;
-                text += `🚚 Доставка по КНР: ${delivery} ¥\n\n`;
+                // Добавляем строку с товаром
+                excelData.push([
+                    `Товар №${index + 1}`,
+                    link,
+                    meta,
+                    price,
+                    qty,
+                    delivery,
+                    fileName
+                ]);
             });
 
-            const subtotal = document.getElementById('subtotal').innerText;
-            const commission = document.getElementById('commission').innerText;
-            const total = document.getElementById('total').innerText;
+            // Добавляем пустую строку и блок итогов в конец таблицы
+            const subtotal = parseFloat(document.getElementById('subtotal').innerText);
+            const commission = parseFloat(document.getElementById('commission').innerText);
+            const total = parseFloat(document.getElementById('total').innerText);
 
-            text += `📈 **ИТОГО:**\n`;
-            text += `Сумма товаров: ${subtotal} ¥\n`;
-            text += `Комиссия (7%): ${commission} ¥\n`;
-            text += `💵 **К оплате: ${total} ¥**`;
+            excelData.push([]); // Пустая строка
+            excelData.push(["", "", "", "", "", "Сумма товаров:", subtotal]);
+            excelData.push(["", "", "", "", "", "Комиссия (7%):", commission]);
+            excelData.push(["", "", "", "", "", "Итого к оплате:", total]);
 
-            // Кодируем текст и перенаправляем в Telegram без блокировок браузера
-            const encodedText = encodeURIComponent(text);
-            const telegramUrl = `https://t.me/cargowb1/?start=${encodedText}`;
-            
-            window.open(telegramUrl, '_blank');
+            // Генерация Excel через SheetJS
+            const worksheet = XLSX.utils.aoa_to_sheet(excelData);
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, "Заказ Cargowb");
+
+            // Формируем имя файла с текущей датой
+            const date = new Date().toISOString().slice(0, 10);
+            const filename = `Заказ_Cargowb_${date}.xlsx`;
+
+            // Скачиваем файл на устройство пользователя
+            XLSX.writeFile(workbook, filename);
         });
 
-        // Создаем первый товар автоматически при загрузке страницы
         addItem();
     </script>
 </body>
