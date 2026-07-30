@@ -16,18 +16,12 @@
         .btn { width: 100%; padding: 12px; border: none; border-radius: 8px; font-size: 15px; font-weight: bold; cursor: pointer; margin-top: 10px; transition: background 0.2s; }
         .btn-add { background-color: #34c759; color: white; }
         .btn-add:hover { background-color: #28a745; }
-        .btn-send { background-color: #007aff; color: white; margin-top: 20px; }
-        .btn-send:hover { background-color: #0056b3; }
+        .btn-send { background-color: #24A1DE; color: white; margin-top: 20px; }
+        .btn-send:hover { background-color: #1a84b8; }
         .summary { background: #f1f2f6; padding: 15px; border-radius: 8px; margin-top: 20px; font-size: 16px; }
         .summary div { margin-bottom: 5px; }
         .total-price { font-size: 18px; font-weight: bold; color: #ff3b30; }
         .delete-btn { color: #ff3b30; background: none; border: none; cursor: pointer; float: right; font-size: 13px; }
-        
-        /* Стили для всплывающего окна с готовым текстом */
-        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); justify-content: center; align-items: center; padding: 10px; box-sizing: border-box; }
-        .modal-content { background: white; padding: 20px; border-radius: 12px; max-width: 500px; width: 100%; text-align: center; }
-        textarea { width: 100%; height: 150px; margin: 15px 0; padding: 10px; box-sizing: border-box; font-family: monospace; font-size: 12px; background: #f9f9f9; border: 1px solid #ccc; }
-        .success-text { color: #34c759; font-weight: bold; margin-bottom: 10px; }
     </style>
 </head>
 <body>
@@ -36,6 +30,7 @@
         <h2>Бланк заказа Cargowb</h2>
         
         <form id="orderForm">
+            <!-- Контейнер для списка товаров -->
             <div id="itemsContainer"></div>
 
             <button type="button" class="btn btn-add" onclick="addItem()">➕ Добавить товар в заказ</button>
@@ -46,21 +41,14 @@
                 <div class="total-price">Итого к оплате: <span id="total">0</span> ¥</div>
             </div>
 
-            <button type="submit" class="btn btn-send">📋 Сформировать заказ для Excel</button>
+            <button type="submit" class="btn btn-send">💬 Отправить список в Telegram</button>
         </form>
     </div>
 
-    <!-- Окно, которое покажется после нажатия кнопки -->
-    <div class="modal" id="resultModal">
-        <div class="modal-content">
-            <div class="success-text">🎉 Заказ успешно скопирован!</div>
-            <p style="font-size: 14px; color: #555;">Текст таблицы уже находится в буфере обмена вашего телефона. Просто вставьте его в чат менеджеру или в ячейку Excel.</p>
-            <textarea id="resultTextarea" readonly></textarea>
-            <button class="btn btn-add" onclick="closeModal()">Понятно</button>
-        </div>
-    </div>
-
     <script>
+        // ВНИМАНИЕ: Напишите сюда никнейм менеджера или вашего бота без знака @
+        const TELEGRAM_RECIPIPIENT = 'cargowb1'; 
+        
         let itemCount = 0;
 
         function addItem() {
@@ -96,6 +84,9 @@
                             <input type="number" class="prod-delivery" step="0.01" value="0" placeholder="0.00" oninput="calculateTotal()" required>
                         </div>
                     </div>
+
+                    <label>Ссылка на фото товара (если есть):</label>
+                    <input type="url" class="prod-photo" placeholder="https://...">
                 </div>
             `;
             container.insertAdjacentHTML('beforeend', itemHtml);
@@ -138,48 +129,46 @@
                 return;
             }
 
-            // Формируем текст, разделенный знаками ТАБУЛЯЦИИ (\t). 
-            // Именно этот скрытый знак заставляет Excel разбивать текст на правильные ячейки при обычной вставке!
-            let excelText = "Номер\tСсылка на товар\tХарактеристики\tЦена за шт (¥)\tКоличество\tДоставка по КНР (¥)\n";
-
+            // Формируем красивый текстовый список для отправки в чат
+            let text = `📦 **НОВЫЙ ЗАКАЗ CARGOWB**\n\n`;
+            
             rows.forEach((row, index) => {
                 const link = row.querySelector('.prod-link').value;
                 const price = row.querySelector('.prod-price').value;
                 const qty = row.querySelector('.prod-qty').value;
                 const meta = row.querySelector('.prod-meta').value;
                 const delivery = row.querySelector('.prod-delivery').value;
+                const photo = row.querySelector('.prod-photo').value;
 
-                excelText += `Товар №${index + 1}\t${link}\t${meta}\t${price}\t${qty}\t${delivery}\n`;
+                text += `🔹 **Товар №${index + 1}**\n`;
+                text += `🔗 Ссылка: ${link}\n`;
+                text += `🎨 Характеристики: ${meta}\n`;
+                text += `💰 Цена: ${price} ¥ | 🔢 Кол-во: ${qty} шт\n`;
+                text += `🚚 Доставка по КНР: ${delivery} ¥\n`;
+                if (photo.trim() !== "") {
+                    text += `📸 Фото: ${photo}\n`;
+                }
+                text += `\n`;
             });
 
             const subtotal = document.getElementById('subtotal').innerText;
             const commission = document.getElementById('commission').innerText;
             const total = document.getElementById('total').innerText;
 
-            excelText += `\n`;
-            excelText += `\t\t\t\tСумма товаров:\t${subtotal} ¥\n`;
-            excelText += `\t\t\t\tКомиссия (7%):\t${commission} ¥\n`;
-            excelText += `\t\t\t\tИтого к оплате:\t${total} ¥\n`;
+            text += `📈 **ИТОГО:**\n`;
+            text += `Сумма товаров: ${subtotal} ¥\n`;
+            text += `Комиссия (7%): ${commission} ¥\n`;
+            text += `💵 **К оплате: ${total} ¥**`;
 
-            // Записываем получившуюся таблицу в текстовое поле и копируем в буфер обмена телефона
-            const textarea = document.getElementById('resultTextarea');
-            textarea.value = excelText;
+            const encodedText = encodeURIComponent(text);
             
-            // Показываем всплывающее окно
-            document.getElementById('resultModal').style.display = 'flex';
-
-            // Магия копирования, которая работает везде
-            navigator.clipboard.writeText(excelText).catch(err => {
-                // Запасной вариант, если браузер совсем старый
-                textarea.select();
-                document.execCommand('copy');
-            });
+            // Используем универсальную ссылку-поделиться. Она безотказно работает на всех телефонах
+            const telegramUrl = `https://t.me{TELEGRAM_RECIPIPIENT}?start=${encodedText}`;
+            
+            window.open(telegramUrl, '_blank');
         });
 
-        function closeModal() {
-            document.getElementById('resultModal').style.display = 'none';
-        }
-
+        // Создаем первую карточку товара при открытии страницы
         addItem();
     </script>
 </body>
