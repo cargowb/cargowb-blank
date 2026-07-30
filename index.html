@@ -40,13 +40,14 @@
                 <div class="total-price">Итого к оплате: <span id="total">0</span> ¥</div>
             </div>
 
-            <button type="submit" class="btn btn-send">💬 Отправить список в Telegram</button>
+            <button type="submit" class="btn btn-send" id="submitBtn">Оформить заказ</button>
         </form>
     </div>
 
     <script>
-        // Ваш юзернейм уже прописан здесь жестко и правильно
-        const RECIPIENT = 'cargowb1'; 
+        // Ваши проверенные данные успешно вшиты в скрипт
+        const TELEGRAM_TOKEN = '8851561034:AAF71XaD43N1qsdot6KHnyAn7er-aoJ_kYE'; 
+        const MY_CHAT_ID = '1902257591'; 
         
         let itemCount = 0;
 
@@ -83,9 +84,6 @@
                             <input type="number" class="prod-delivery" step="0.01" value="0" placeholder="0.00" oninput="calculateTotal()" required>
                         </div>
                     </div>
-
-                    <label>Ссылка на фото товара (если есть):</label>
-                    <input type="url" class="prod-photo" placeholder="https://...">
                 </div>
             `;
             container.insertAdjacentHTML('beforeend', itemHtml);
@@ -128,7 +126,11 @@
                 return;
             }
 
-            let text = '📦 НОВЫЙ ЗАКАЗ CARGOWB\n\n';
+            const button = document.getElementById('submitBtn');
+            button.innerText = 'Отправка...';
+            button.disabled = true;
+
+            let text = '📦 *НОВЫЙ ЗАКАЗ CARGOWB*\n\n';
             
             rows.forEach(function(row, index) {
                 const link = row.querySelector('.prod-link').value;
@@ -136,35 +138,51 @@
                 const qty = row.querySelector('.prod-qty').value;
                 const meta = row.querySelector('.prod-meta').value;
                 const delivery = row.querySelector('.prod-delivery').value;
-                const photo = row.querySelector('.prod-photo').value;
 
-                text += '🔹 Товар №' + (index + 1) + '\n';
+                text += '🔹 *Товар №' + (index + 1) + '*\n';
                 text += '🔗 Ссылка: ' + link + '\n';
                 text += '🎨 Характеристики: ' + meta + '\n';
                 text += '💰 Цена: ' + price + ' ¥ | 🔢 Кол-во: ' + qty + ' шт\n';
-                text += '🚚 Доставка по КНР: ' + delivery + ' ¥\n';
-                if (photo.trim() !== '') {
-                    text += '📸 Фото: ' + photo + '\n';
-                }
-                text += '\n';
+                text += '🚚 Доставка по КНР: ' + delivery + ' ¥\n\n';
             });
 
             const subtotal = document.getElementById('subtotal').innerText;
             const commission = document.getElementById('commission').innerText;
             const total = document.getElementById('total').innerText;
 
-            text += '📈 ИТОГО:\n';
+            text += '📈 *ИТОГО:*\n';
             text += 'Сумма товаров: ' + subtotal + ' ¥\n';
             text += 'Комиссия (7%): ' + commission + ' ¥\n';
-            text += '💵 К оплате: ' + total + ' ¥';
+            text += '💵 *К оплате: ' + total + ' ¥*';
 
-            const encodedText = encodeURIComponent(text);
-            
-            // Ссылка «Поделиться», которая перенаправляет в этом же окне на ваш личный аккаунт cargowb1
-            const telegramUrl = 'https://t.me' + RECIPIENT + '&text=' + encodedText;
-            
-            // Мгновенный переход без открытия заблокированных браузером вкладок
-            window.location.href = telegramUrl;
+            // Отправка запроса в Telegram
+            fetch('https://telegram.org' + TELEGRAM_TOKEN + '/sendMessage', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    chat_id: MY_CHAT_ID,
+                    text: text,
+                    parse_mode: 'Markdown',
+                    disable_web_page_preview: true
+                })
+            })
+            .then(function(response) {
+                if (response.ok) {
+                    alert('🎉 Заказ успешно отправлен менеджеру!');
+                    document.getElementById('orderForm').reset();
+                    document.getElementById('itemsContainer').innerHTML = '';
+                    addItem();
+                } else {
+                    alert('Ошибка сервера Telegram. Убедитесь, что вы нажали СТАРТ в самом боте!');
+                }
+            })
+            .catch(function(error) {
+                alert('Ошибка сети. Проверьте интернет-соединение.');
+            })
+            .finally(function() {
+                button.innerText = 'Оформить заказ';
+                button.disabled = false;
+            });
         });
 
         addItem();
