@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Бланк заказа Cargowb (Excel/CSV)</title>
+    <title>Бланк заказа Cargowb</title>
     <style>
         body { font-family: Arial, sans-serif; max-width: 600px; margin: 20px auto; padding: 15px; background: #f5f7fa; color: #333; }
         .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); }
@@ -16,13 +16,18 @@
         .btn { width: 100%; padding: 12px; border: none; border-radius: 8px; font-size: 15px; font-weight: bold; cursor: pointer; margin-top: 10px; transition: background 0.2s; }
         .btn-add { background-color: #34c759; color: white; }
         .btn-add:hover { background-color: #28a745; }
-        .btn-send { background-color: #ff9500; color: white; margin-top: 20px; }
-        .btn-send:hover { background-color: #e08500; }
+        .btn-send { background-color: #007aff; color: white; margin-top: 20px; }
+        .btn-send:hover { background-color: #0056b3; }
         .summary { background: #f1f2f6; padding: 15px; border-radius: 8px; margin-top: 20px; font-size: 16px; }
         .summary div { margin-bottom: 5px; }
         .total-price { font-size: 18px; font-weight: bold; color: #ff3b30; }
         .delete-btn { color: #ff3b30; background: none; border: none; cursor: pointer; float: right; font-size: 13px; }
-        .file-input-wrapper { margin-bottom: 10px; }
+        
+        /* Стили для всплывающего окна с готовым текстом */
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); justify-content: center; align-items: center; padding: 10px; box-sizing: border-box; }
+        .modal-content { background: white; padding: 20px; border-radius: 12px; max-width: 500px; width: 100%; text-align: center; }
+        textarea { width: 100%; height: 150px; margin: 15px 0; padding: 10px; box-sizing: border-box; font-family: monospace; font-size: 12px; background: #f9f9f9; border: 1px solid #ccc; }
+        .success-text { color: #34c759; font-weight: bold; margin-bottom: 10px; }
     </style>
 </head>
 <body>
@@ -41,8 +46,18 @@
                 <div class="total-price">Итого к оплате: <span id="total">0</span> ¥</div>
             </div>
 
-            <button type="submit" class="btn btn-send">📥 Скачать таблицу для Excel</button>
+            <button type="submit" class="btn btn-send">📋 Сформировать заказ для Excel</button>
         </form>
+    </div>
+
+    <!-- Окно, которое покажется после нажатия кнопки -->
+    <div class="modal" id="resultModal">
+        <div class="modal-content">
+            <div class="success-text">🎉 Заказ успешно скопирован!</div>
+            <p style="font-size: 14px; color: #555;">Текст таблицы уже находится в буфере обмена вашего телефона. Просто вставьте его в чат менеджеру или в ячейку Excel.</p>
+            <textarea id="resultTextarea" readonly></textarea>
+            <button class="btn btn-add" onclick="closeModal()">Понятно</button>
+        </div>
     </div>
 
     <script>
@@ -80,11 +95,6 @@
                             <label>Доставка по Китаю (¥):</label>
                             <input type="number" class="prod-delivery" step="0.01" value="0" placeholder="0.00" oninput="calculateTotal()" required>
                         </div>
-                    </div>
-
-                    <div class="file-input-wrapper">
-                        <label>Фото или файл товара:</label>
-                        <input type="file" class="prod-file">
                     </div>
                 </div>
             `;
@@ -128,9 +138,9 @@
                 return;
             }
 
-            // Формируем CSV данные. Используем точку с запятой ";" как разделитель для Excel
-            let csvContent = "\uFEFF"; // BOM маркер, чтобы Excel сразу понимал русский язык и знаки юаня
-            csvContent += "Номер товара;Ссылка на товар;Характеристики;Цена за шт (¥);Количество;Доставка по КНР (¥);Имя файла\n";
+            // Формируем текст, разделенный знаками ТАБУЛЯЦИИ (\t). 
+            // Именно этот скрытый знак заставляет Excel разбивать текст на правильные ячейки при обычной вставке!
+            let excelText = "Номер\tСсылка на товар\tХарактеристики\tЦена за шт (¥)\tКоличество\tДоставка по КНР (¥)\n";
 
             rows.forEach((row, index) => {
                 const link = row.querySelector('.prod-link').value;
@@ -138,40 +148,37 @@
                 const qty = row.querySelector('.prod-qty').value;
                 const meta = row.querySelector('.prod-meta').value;
                 const delivery = row.querySelector('.prod-delivery').value;
-                
-                const fileInput = row.querySelector('.prod-file');
-                let fileName = "Файл не выбран";
-                if (fileInput.files.length > 0) {
-                    fileName = fileInput.files[0].name;
-                }
 
-                // Убираем точки с запятой из текста пользователя, чтобы не ломать таблицу
-                const cleanMeta = meta.replace(/;/g, ' ');
-
-                csvContent += `Товар №${index + 1};${link};${cleanMeta};${price};${qty};${delivery};${fileName}\n`;
+                excelText += `Товар №${index + 1}\t${link}\t${meta}\t${price}\t${qty}\t${delivery}\n`;
             });
 
             const subtotal = document.getElementById('subtotal').innerText;
             const commission = document.getElementById('commission').innerText;
             const total = document.getElementById('total').innerText;
 
-            csvContent += "\n"; // Пустая строка
-            csvContent += `;;;;;Сумма товаров:;${subtotal} ¥\n`;
-            csvContent += `;;;;;Комиссия (7%):;${commission} ¥\n`;
-            csvContent += `;;;;;Итого к оплате:;${total} ¥\n`;
+            excelText += `\n`;
+            excelText += `\t\t\t\tСумма товаров:\t${subtotal} ¥\n`;
+            excelText += `\t\t\t\tКомиссия (7%):\t${commission} ¥\n`;
+            excelText += `\t\t\t\tИтого к оплате:\t${total} ¥\n`;
 
-            // Создаем Blob объект и принудительную ссылку для скачивания, которую Telegram пропустит
-            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-            const link = document.createElement("a");
+            // Записываем получившуюся таблицу в текстовое поле и копируем в буфер обмена телефона
+            const textarea = document.getElementById('resultTextarea');
+            textarea.value = excelText;
             
-            const date = new Date().toISOString().slice(0, 10);
-            link.href = URL.createObjectURL(blob);
-            link.setAttribute("download", `Заказ_Cargowb_${date}.csv`);
-            
-            document.body.appendChild(link);
-            link.click(); // Имитируем клик
-            document.body.removeChild(link);
+            // Показываем всплывающее окно
+            document.getElementById('resultModal').style.display = 'flex';
+
+            // Магия копирования, которая работает везде
+            navigator.clipboard.writeText(excelText).catch(err => {
+                // Запасной вариант, если браузер совсем старый
+                textarea.select();
+                document.execCommand('copy');
+            });
         });
+
+        function closeModal() {
+            document.getElementById('resultModal').style.display = 'none';
+        }
 
         addItem();
     </script>
