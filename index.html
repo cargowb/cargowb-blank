@@ -22,6 +22,12 @@
         .summary div { margin-bottom: 5px; }
         .total-price { font-size: 18px; font-weight: bold; color: #ff3b30; }
         .delete-btn { color: #ff3b30; background: none; border: none; cursor: pointer; float: right; font-size: 13px; }
+        
+        /* Стили окна с готовым текстом */
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); justify-content: center; align-items: center; padding: 10px; box-sizing: border-box; z-index: 9999; }
+        .modal-content { background: white; padding: 20px; border-radius: 12px; max-width: 500px; width: 100%; text-align: center; box-shadow: 0 4px 20px rgba(0,0,0,0.2); }
+        textarea { width: 100%; height: 180px; margin: 15px 0; padding: 10px; box-sizing: border-box; font-size: 13px; background: #f9f9f9; border: 1px solid #ccc; border-radius: 6px; resize: none; }
+        .success-text { color: #34c759; font-weight: bold; font-size: 18px; margin-bottom: 5px; }
     </style>
 </head>
 <body>
@@ -40,15 +46,26 @@
                 <div class="total-price">Итого к оплате: <span id="total">0</span> ¥</div>
             </div>
 
-            <!-- Кнопка теперь просто вызывает одну безопасную функцию -->
-            <button type="button" class="btn btn-send" onclick="sendOrder()">Оформить заказ</button>
+            <button type="button" class="btn btn-send" onclick="generateOrder()">Оформить заказ</button>
         </form>
     </div>
 
+    <!-- Всплывающее окно, которое сработает БЕЗ ошибок сети -->
+    <div class="modal" id="resultModal">
+        <div class="modal-content">
+            <div class="success-text">🎉 Список заказа сформирован!</div>
+            <p style="font-size: 14px; color: #444; margin: 5px 0;">Текст ниже скопирован в буфер обмена вашего телефона. Нажмите синюю кнопку, чтобы отправить его менеджеру.</p>
+            
+            <textarea id="resultTextarea" readonly></textarea>
+            
+            <button class="btn btn-send" style="margin-top:0;" onclick="redirectToTelegram()">Перейти в Telegram и отправить</button>
+            <button class="btn" style="background:#8e8e93; color:white;" onclick="closeModal()">Закрыть</button>
+        </div>
+    </div>
+
     <script>
-        // Данные жестко вшиты
-        const TOKEN = '8851561034:AAF71XaD43N1qsdot6KHnyAn7er-aoJ_kYE'; 
-        const CHAT_ID = '1902257591'; 
+        // Ваш личный аккаунт менеджера
+        const RECIPIENT = 'cargowb1'; 
         
         let itemCount = 0;
 
@@ -121,15 +138,14 @@
             document.getElementById('total').innerText = total.toFixed(2);
         }
 
-        // Новая, изолированная функция отправки заказа
-        function sendOrder() {
+        function generateOrder() {
             const rows = document.querySelectorAll('.item-row');
             if (rows.length === 0) {
                 alert('Добавьте хотя бы один товар!');
                 return;
             }
 
-            let text = '📦 *НОВЫЙ ЗАКАЗ CARGOWB*\n\n';
+            let text = '📦 НОВЫЙ ЗАКАЗ CARGOWB\n\n';
             
             rows.forEach(function(row, index) {
                 const link = row.querySelector('.prod-link').value;
@@ -139,7 +155,7 @@
                 const delivery = row.querySelector('.prod-delivery').value || 0;
                 const photo = row.querySelector('.prod-photo').value || '';
 
-                text += '🔹 *Товар №' + (index + 1) + '*\n';
+                text += '🔹 Товар №' + (index + 1) + '\n';
                 text += '🔗 Ссылка: ' + link + '\n';
                 text += '🎨 Характеристики: ' + meta + '\n';
                 text += '💰 Цена: ' + price + ' ¥ | 🔢 Кол-во: ' + qty + ' шт\n';
@@ -154,21 +170,34 @@
             const commission = document.getElementById('commission').innerText;
             const total = document.getElementById('total').innerText;
 
-            text += '📈 *ИТОГО:*\n';
+            text += '📈 ИТОГО:\n';
             text += 'Сумма товаров: ' + subtotal + ' ¥\n';
             text += 'Комиссия (7%): ' + commission + ' ¥\n';
-            text += '💵 *К оплате: ' + total + ' ¥*';
+            text += '💵 К оплате: ' + total + ' ¥';
 
-            // Вместо скрытых фоновых запросов, которые блокирует браузер телефона,
-            // мы используем прямую замену адреса страницы. Этот метод НЕВОЗМОЖНО заблокировать ошибкой сети.
-            const encodedText = encodeURIComponent(text);
-            const directApiUrl = 'https://telegram.org' + TOKEN + '/sendMessage?chat_id=' + CHAT_ID + '&parse_mode=Markdown&text=' + encodedText;
-            
-            // Телефон просто перейдет по этой прямой ссылке, и сервер Телеграма примет сообщение
-            window.location.href = directApiUrl;
+            // Показываем текст в окне
+            const textarea = document.getElementById('resultTextarea');
+            textarea.value = text;
+            document.getElementById('resultModal').style.display = 'flex';
+
+            // Автоматически копируем в буфер обмена
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(text);
+            } else {
+                textarea.select();
+                document.execCommand('copy');
+            }
         }
 
-        // Инициализируем первое поле
+        function redirectToTelegram() {
+            // Мгновенно перенаправляем на ваш профиль. Ссылка чистая, короткая, без ошибок сети
+            window.location.href = 'https://t.me' + RECIPIENT;
+        }
+
+        function closeModal() {
+            document.getElementById('resultModal').style.display = 'none';
+        }
+
         addItem();
     </script>
 </body>
