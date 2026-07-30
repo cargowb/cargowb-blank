@@ -161,7 +161,7 @@
             const encodedText = encodeURIComponent(text);
             
             // Простая текстовая ссылка, которая намертво вшита и никогда не вызовет синтаксический сбой
-            const telegramUrl = 'https://t.me' + RECIPIENT + '&text=' + encodedText;
+            const telegramUrl = 'https://t.me/' + RECIPIENT + '&text=' + encodedText;
             
             window.open(telegramUrl, '_blank');
         });
