@@ -45,7 +45,7 @@
     </div>
 
     <script>
-        // ВНИМАНИЕ: Напишите сюда юзернейм вашего бота или менеджера БЕЗ собаки @
+        // Ваш юзернейм уже прописан здесь жестко и правильно
         const RECIPIENT = 'cargowb1'; 
         
         let itemCount = 0;
@@ -124,7 +124,7 @@
             
             const rows = document.querySelectorAll('.item-row');
             if (rows.length === 0) {
-                alert('Добавитье хотя бы один товар!');
+                alert('Добавьте хотя бы один товар!');
                 return;
             }
 
@@ -155,18 +155,18 @@
 
             text += '📈 ИТОГО:\n';
             text += 'Сумма товаров: ' + subtotal + ' ¥\n';
-            text += `Комиссия (7%): ` + commission + ' ¥\n';
+            text += 'Комиссия (7%): ' + commission + ' ¥\n';
             text += '💵 К оплате: ' + total + ' ¥';
 
             const encodedText = encodeURIComponent(text);
             
-            // Простая текстовая ссылка, которая намертво вшита и никогда не вызовет синтаксический сбой
-            const telegramUrl = 'https://t.me/' + RECIPIENT + '&text=' + encodedText;
+            // Ссылка «Поделиться», которая перенаправляет в этом же окне на ваш личный аккаунт cargowb1
+            const telegramUrl = 'https://t.me' + RECIPIENT + '&text=' + encodedText;
             
-            window.open(telegramUrl, '_blank');
+            // Мгновенный переход без открытия заблокированных браузером вкладок
+            window.location.href = telegramUrl;
         });
 
-        // Создаем первое поле автоматически
         addItem();
     </script>
 </body>
