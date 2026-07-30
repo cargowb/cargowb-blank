@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Бланк заказа CargoWB</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; background-color: #f4f5f7; margin: 0; padding: 12px; color: #333; box-sizing: border-box; padding-bottom: 240px; }
+    .header { text-align: center; margin-bottom: 10px; }
+    .header h2 { margin: 0; color: #1e3a8a; font-size: 20px; }
+    .header p { margin: 5px 0 0; color: #666; font-size: 13px; }
+    
+    .action-row { display: flex; gap: 8px; margin-bottom: 15px; }
+    .action-btn { flex: 1; padding: 10px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 12px; font-weight: bold; cursor: pointer; text-align: center; outline: none; }
+    .btn-save { background: #fff; color: #1e3a8a; border-color: #1e3a8a; }
+    .btn-load { background: #fff; color: #10b981; border-color: #10b981; }
+    
+    .size-selector { background: #fff; border-radius: 12px; padding: 12px; margin-bottom: 15px; border: 1px solid #d1d5db; box-shadow: 0 2px 4px rgba(0,0,0,0.05); text-align: center; }
+    .size-selector p { margin: 0 0 10px 0; font-size: 13px; font-weight: bold; color: #444; }
+    .btn-group { display: flex; gap: 6px; justify-content: center; }
+    .size-btn { flex: 1; padding: 10px 5px; border: 1px solid #2563eb; background: #fff; color: #2563eb; border-radius: 8px; font-size: 12px; font-weight: bold; cursor: pointer; outline: none; }
+    .size-btn.active { background: #2563eb; color: #fff; }
+    
+    .card { background: #fff; border-radius: 12px; padding: 12px; margin-bottom: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); border: 1px solid #e5e7eb; }
+    .card-title { font-weight: bold; font-size: 14px; margin-bottom: 10px; color: #1e3a8a; }
+    .form-group { margin-bottom: 8px; }
+    .form-group label { display: block; font-size: 11px; color: #666; margin-bottom: 3px; font-weight: 500; }
+    input { width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 6px; box-sizing: border-box; font-size: 14px; background: #fafafa; }
+    input:focus { border-color: #2563eb; outline: none; background: #fff; }
+    .row-flex { display: flex; gap: 8px; }
+    .col-33 { flex: 1; }
+    
+    .footer-bar { position: fixed; bottom: 0; left: 0; right: 0; background: #fff; border-top: 1px solid #e5e7eb; padding: 12px; box-shadow: 0 -4px 10px rgba(0,0,0,0.05); display: flex; flex-direction: column; gap: 6px; box-sizing: border-box; z-index: 1000; }
+    .total-info { display: flex; justify-content: space-between; font-size: 13px; color: #444; border-bottom: 1px solid #f3f4f6; padding-bottom: 4px; }
+    .final-price { display: flex; justify-content: space-between; font-size: 16px; font-weight: bold; color: #111; padding-top: 2px; }
+    .send-btn { background: #2563eb; color: #fff; border: none; padding: 14px; border-radius: 12px; font-size: 16px; font-weight: bold; text-align: center; cursor: pointer; width: 100%; margin-top: 4px; box-shadow: 0 4px 6px rgba(37,99,235,0.2); outline: none; }
+    .send-btn:active { background: #1d4ed8; }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <h2>Оформление бланка заказа</h2>
+    <p>Заполните позиции вашего заказа для CargoWB</p>
+  </div>
+
+  <!-- КНОПКИ ДЛЯ СУПЕР-СОХРАНЕНИЯ ЧЕРНОВИКА -->
+  <div class="action-row">
+    <button class="action-btn btn-save" onclick="saveDraft()">💾 Сохранить черновик</button>
+    <button class="action-btn btn-load" onclick="loadDraft()">📂 Загрузить черновик</button>
+  </div>
+
+  <div class="size-selector">
+    <p>Сколько позиций товаров у вас в заказе?</p>
+    <div class="btn-group">
+      <button class="size-btn active" id="btn-size-5" onclick="changeFormSize(5)">📦 до 5 шт</button>
+      <button class="size-btn" id="btn-size-15" onclick="changeFormSize(15)">💼 до 15 шт</button>
+      <button class="size-btn" id="btn-size-40" onclick="changeFormSize(40)">🚀 до 40 шт</button>
+    </div>
+  </div>
+
+  <div id="items-container">
+    <!-- Сюда JS вставит карточки -->
+  </div>
+
+  <div class="footer-bar">
+    <div class="total-info">
+      <span>Товаров: <b id="total-count">0 шт</b></span>
+      <span>Товары + КНР: <b id="total-cny">0.00 ¥</b></span>
+    </div>
+    <div class="total-info" style="border:none; padding:0;">
+      <span>Комиссия выкупа (7%): <b id="percent-view">0.00 ¥</b></span>
+    </div>
+    <div class="final-price">
+      <span>ИТОГО К ОПЛАТЕ:</span>
+      <span id="total-with-percent" style="color: #2563eb;">0.00 ¥</span>
+    </div>
+    <!-- Новая кнопка, которая формирует Excel через родной скрипт Google таблицы без зависаний -->
+    <button class="send-btn" onclick="sendOrderToGoogleAndDownload()">📥 Сформировать и скачать Excel</button>
+  </div>
+
+  <script>
+    let currentRowsCount = 5;
+
+    function renderStaticForm(count) {
+      currentRowsCount = count;
+      const container = document.getElementById('items-container');
+      if (!container) return;
+      
+      let htmlContent = '';
+      for (let i = 1; i <= count; i++) {
+        htmlContent += '<div class="card" id="item-card-' + i + '">' +
+          '<div class="card-title">Товар №' + i + '</div>' +
+          '<div class="form-group"><label>Ссылка на товар (Taobao / 1688)</label><input type="url" class="item-link" placeholder="https://..."></div>' +
+          '<div class="form-group"><label>Размер / Цвет</label><input type="text" class="item-size" placeholder="Например: XL, Черный"></div>' +
+          '<div class="row-flex">' +
+            '<div class="form-group col-33"><label>Цена (¥)</label><input type="number" class="item-price" step="0.01" placeholder="0.00" oninput="calculateTotal()"></div>' +
+            '<div class="form-group col-33"><label>Кол-во (шт)</label><input type="number" class="item-qty" value="1" min="1" oninput="calculateTotal()"></div>' +
+            '<div class="form-group col-33"><label>Доставка КНР (¥)</label><input type="number" class="item-delivery" step="0.01" value="0" oninput="calculateTotal()"></div>' +
+          '</div>' +
+        '</div>';
+      }
+      container.innerHTML = htmlContent;
+      calculateTotal();
+    }
+
+    function changeFormSize(size) {
+      const buttons = document.getElementsByClassName('size-btn');
+      for (let i = 0; i < buttons.length; i++) { buttons[i].classList.remove('active'); }
+      
+      if (size === 5) document.getElementById('btn-size-5').classList.add('active');
+      if (size === 15) document.getElementById('btn-size-15').classList.add('active');
+      if (size === 40) document.getElementById('btn-size-40').classList.add('active');
+      
+      renderStaticForm(size);
+    }
+
+    function calculateTotal() {
+      let totalQty = 0; let totalGoodsAndDelivery = 0; let totalPureGoods = 0;
+      const prices = document.getElementsByClassName('item-price');
+      const qtys = document.getElementsByClassName('item-qty');
+      const deliveries = document.getElementsByClassName('item-delivery');
+      
+      for (let i = 0; i < prices.length; i++) {
+        const price = parseFloat(prices[i].value) || 0;
+        const qty = parseInt(qtys[i].value) || 0;
+        const delivery = parseFloat(deliveries[i].value) || 0;
+        if (price > 0) {
+          totalQty += qty;
+          totalPureGoods += price * qty;
+          totalGoodsAndDelivery += (price * qty) + delivery;
+        }
+      }
+      const percentValue = totalPureGoods * 0.07;
+      const totalWithPercent = totalGoodsAndDelivery + percentValue;
+      
+      document.getElementById('total-count').innerText = totalQty + ' шт';
+      document.getElementById('total-cny').innerText = totalGoodsAndDelivery.toFixed(2) + ' ¥';
+      document.getElementById('percent-view').innerText = percentValue.toFixed(2) + ' ¥';
+      document.getElementById('total-with-percent').innerText = totalWithPercent.toFixed(2) + ' ¥';
+    }
+
+    function saveDraft() {
+      const links = document.getElementsByClassName('item-link');
+      const sizes = document.getElementsByClassName('item-size');
+      const prices = document.getElementsByClassName('item-price');
+      const qtys = document.getElementsByClassName('item-qty');
+      const deliveries = document.getElementsByClassName('item-delivery');
+      
+      const draftData = [];
+      for (let i = 0; i < links.length; i++) {
+        draftData.push({
+          link: links[i].value, size: sizes[i].value,
+          price: prices[i].value, qty: qtys[i].value, delivery: deliveries[i].value
+        });
+      }
+      localStorage.setItem('cargowb_form_size', currentRowsCount);
+      localStorage.setItem('cargowb_draft', JSON.stringify(draftData));
+      alert('💾 Черновик сохранен! Теперь можно закрывать окно, данные не сотрутся.');
+    }
+
+    function loadDraft() {
+      const savedSize = localStorage.getItem('cargowb_form_size');
+      const savedData = localStorage.getItem('cargowb_draft');
+      if (!savedData) { alert('❌ Черновиков не найдено!'); return; }
+      
+      if (savedSize) { changeFormSize(parseInt(savedSize)); }
+      
+      const draftData = JSON.parse(savedData);
+      const links = document.getElementsByClassName('item-link');
+      const sizes = document.getElementsByClassName('item-size');
+      const prices = document.getElementsByClassName('item-price');
+      const qtys = document.getElementsByClassName('item-qty');
+      const deliveries = document.getElementsByClassName('item-delivery');
+      
+      for (let i = 0; i < draftData.length; i++) {
+        if (i < links.length) {
+          links[i].value = draftData[i].link; sizes[i].value = draftData[i].size;
+          prices[i].value = draftData[i].price; qtys[i].value = draftData[i].qty;
+          deliveries[i].value = draftData[i].delivery;
+        }
+      }
+      calculateTotal();
+      alert('📂 Черновик успешно восстановлен!');
+    }
+
+    // Передаем данные на сторону Google Таблицы, которая сама сделает скачивание
